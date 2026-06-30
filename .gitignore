@@ -1,0 +1,33 @@
+# Editor / local history
+.history/
+.agents/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Training outputs
+runs/
+run*/
+pl_run/
+checkpoints/
+logs/
+
+# Generated data / features
+data/
+data_xj/
+splits/
+RF_feature/
+
+# Model artifacts
+*.ckpt
+*.pt
+*.pth
+*.joblib
+*.pkl
+*.npy
+*.npz
+
+# Generated figures / metadata
+train_y_hist.png
+models/*_meta.json
