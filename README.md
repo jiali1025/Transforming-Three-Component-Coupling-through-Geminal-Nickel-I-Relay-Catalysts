@@ -1,7 +1,5 @@
 # Ni-GAC Models — Reaction Yield Prediction for Geminal Nickel(I) Relay Catalysis
 
-*English | [简体中文](README.zh-CN.md)*
-
 Machine-learning code for predicting and analyzing reaction yields in
 three-component coupling reactions, with a focus on transition-metal
 (in particular nickel) catalyzed transformations.
