@@ -35,7 +35,6 @@ The repository contains several complementary components:
 > cluster and contain **hard-coded absolute data paths**. Before running any
 > training script you will need to edit those paths (or set the documented
 > environment variables) to point at your own data. See
-> [Notes & reproducibility](#11-notes--reproducibility).
 
 ---
 
