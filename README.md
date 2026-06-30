@@ -10,7 +10,7 @@ This repository accompanies the paper:
 
 ---
 
-## 1. Overview
+## Overview
 
 This project provides the data-processing and modeling code used to study
 reaction-yield prediction for catalytic three-component couplings. Given a
@@ -38,80 +38,7 @@ The repository contains several complementary components:
 
 ---
 
-## 2. Project Structure
-
-Only the most relevant files are shown. A vendored copy of `chemprop` lives
-under `models/chemprop/` and is used as a library; it is not described
-file-by-file here.
-
-```
-Ni_GAC_models-main/
-├── README.md                      # This file
-├── .gitignore
-│
-├── split_train_val_test.py        # Stratified train/val/test split (by catalyst presence)
-├── split_reagent.py               # Reagent-column processing
-├── train_yield_distribution.py    # Inspect/plot the yield (y) distribution → train_y_hist.png
-├── create_run_test_data.py        # Draw a small random sample for quick smoke tests
-├── dataset.py                     # (placeholder / near-empty)
-│
-├── check_*.py                     # Data-validation scripts (catalysts, reagents, reactants, Na, ...)
-├── clean_*.py                     # Data-cleaning scripts (reagent / ionic-reagent normalization)
-├── filter_max_reagent.py          # Filter rows by reagent count
-├── print_long_reagent.py          # Diagnostic printing of long reagent strings
-│
-└── models/
-    ├── Ni_GAC_model.py            # ★ YieldPredictor: CGR↔Catalyst cross-attention regressor
-    ├── Ni_GAC_model_noattn.py     #   Ablation: same model without cross-attention
-    ├── Ni_GAC_classifier.py       # ★ YieldClassifier: high/low-yield classifier (reuses encoders)
-    ├── Ni_GAC_classifier_noattn.py#   Ablation classifier without cross-attention
-    │
-    ├── combined_featurizers.py    # CGR + molecule featurizers (Chemprop) and SMILES→MolGraph helpers
-    ├── new_dataset.py             # RxnGraphDataset: one reaction → {cgr, cat, other, y}
-    ├── new_collate.py             # collate_graph_batch: batches CGR / catalyst / reagent graphs
-    ├── model_dataloader.py        # build_loader(): PyTorch DataLoader from a CSV
-    ├── collate.py / dataset.py    # Earlier collate/dataset variants
-    │
-    ├── train_yield.py             # ★ Train the regression model (Lightning, multi-GPU DDP)
-    ├── train_yield_noattn.py      #   Train the no-attention regression ablation
-    ├── train_yield_classifier.py  # ★ Train the classification model
-    ├── train_yield_classifier_noattn.py  # Train the no-attention classifier ablation
-    ├── test_yield_classifier.py   #   Evaluate trained classifier checkpoints (see caveats §6)
-    ├── test_data_loader.py        #   Smoke test for the data pipeline
-    ├── test_reaction_featurization.py
-    │
-    ├── RF_feature.py              # Precompute Morgan-fingerprint feature .npy files
-    ├── RF_model.py                # Random Forest yield regressor
-    ├── RF_model_classifier.py     # Random Forest yield classifier
-    ├── MLP_model.py               # MLP regressor/classifier on precomputed features
-    ├── MLP_regression_meta.json   # Saved MLP metadata (hyperparams + scaler)
-    ├── MLP_classification_meta.json
-    │
-    ├── train_pl_bert.py           # Optional SMILES BERT baseline (HuggingFace Transformers)
-    ├── investigate_model.py       # Inspect a checkpoint (e.g. EarlyStopping state)
-    ├── find_ni.py                 # Find rows whose catalyst contains nickel
-    ├── build_model_blockdiagram.py# Render a model block diagram (python-pptx)
-    │
-    ├── preprocess/                # Data-filtering pipeline (featurizability, bad-row mapping, stats)
-    │   ├── filter_all_data_with_featurization.py
-    │   ├── clean_featurizationable_data.py
-    │   ├── correct_wrong_data.py
-    │   ├── find_all_bad_data.py / find_all_bad_entry_info.py / map_all_bad_data_index.py
-    │   ├── filter_data_accord_num.py
-    │   ├── change_LIAlH4.py
-    │   └── stat_of_data.py        # Distribution of #molecules in other_reagent
-    │
-    ├── featurization/             # Featurization helpers
-    └── chemprop/                  # Vendored Chemprop library (v2.2.0)
-```
-
-> Several preprocessing scripts exist both at the repository root and under
-> `models/preprocess/` (e.g. `clean_featurizationable_data.py`). The
-> `models/preprocess/` copies are the more organized versions.
-
----
-
-## 3. Environment & Installation
+## Environment & Installation
 
 ### Python version
 
@@ -177,59 +104,14 @@ pip install transformers python-pptx
 
 ---
 
-## 4. Data
-
-### Expected format
-
-The models consume a **CSV** file with (at least) the following columns:
-
-| Column                        | Description                                                        |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `reaction_smiles`             | Reaction SMILES (`reactants>agents>products` or `reactants>>products`). Converted to a Condensed Graph of Reaction (CGR). |
-| `transition_metal_catalyst`   | Catalyst SMILES; multiple species separated by `.`. May be empty. |
-| `other_reagent`               | Other reagents SMILES; multiple species separated by `.`. May be empty. |
-| `yield`                       | Reaction yield (numeric, expected range 0–100).                   |
-
-Empty `transition_metal_catalyst` / `other_reagent` cells are handled
-gracefully (an empty molecular graph is substituted).
-
-### Data availability
-
-The underlying reaction dataset is **not included** in this repository (data
-files such as `*.csv`, `*.npy`, and split directories are excluded via
-`.gitignore`). You must provide your own data in the format above.
-
-The original scripts reference dataset files such as
-`final_data_featurizable_max.csv` and split directories under paths like
-`.../Ni_GAC_models/splits/`. **These absolute paths are placeholders for the
-authors' environment and must be replaced.** *(Information needed: the source,
-size, and public availability of the reaction dataset — see
-[§12](#12-information-to-be-supplied-by-the-user).)*
-
-### Producing train/val/test splits
-
-`split_train_val_test.py` performs a stratified split so that the validation
-and test sets contain a fixed fraction (default 30%) of reactions **with** a
-transition-metal catalyst, using a fixed random seed (`42`) for
-reproducibility. Edit `CSV_PATH` / `OUT_DIR` / sizes at the top of the file,
-then:
-
-```bash
-python split_train_val_test.py
-```
-
-This writes `splits/train.csv`, `splits/val.csv`, and `splits/test.csv`.
-
----
-
-## 5. Usage
+## Usage
 
 > All training scripts below contain hard-coded `TRAIN_CSV` / `VAL_CSV` /
 > `TEST_CSV` / `BASE_DIR` constants near the top. **Edit these before
 > running.** Many hyperparameters are read from environment variables (see
 > each script). *Please verify the arguments before running.*
 
-### 5.1 Inspect the data
+### Inspect the data
 
 ```bash
 # Yield distribution + histogram (writes train_y_hist.png)
@@ -239,7 +121,7 @@ python train_yield_distribution.py --csv splits/train.csv --clip01
 python models/preprocess/stat_of_data.py
 ```
 
-### 5.2 Graph model — regression (`YieldPredictor`)
+### Graph model — regression (`YieldPredictor`)
 
 Edit the paths in `models/train_yield.py`, then:
 
@@ -260,7 +142,7 @@ Key behavior:
 - Checkpoints (top-3 by `val_loss` + `last` + `final_full.ckpt`) and CSV logs
   are written under `BASE_DIR`.
 
-### 5.3 Graph model — classification (`YieldClassifier`)
+### Graph model — classification (`YieldClassifier`)
 
 ```bash
 cd models
@@ -273,7 +155,7 @@ Reactions are labeled high-yield when `yield >= YIELD_THRESHOLD` (default
 `10.0`). Training monitors validation **AUROC**, with early stopping, and logs
 accuracy / average precision / AUROC / F1.
 
-### 5.4 Ablations (no cross-attention)
+### Ablations (no cross-attention)
 
 ```bash
 cd models
@@ -281,7 +163,7 @@ python train_yield_noattn.py             # regression ablation
 python train_yield_classifier_noattn.py  # classification ablation
 ```
 
-### 5.5 Random Forest baseline
+### Random Forest baseline
 
 ```bash
 # Step 1: precompute Morgan-fingerprint features (per split)
@@ -305,7 +187,7 @@ Notes:
   *Please verify the arguments before running.*
 - `RF_model_classifier.py` provides the classification counterpart.
 
-### 5.6 MLP baseline
+### MLP baseline
 
 Operates on the same precomputed feature `.npy` files:
 
@@ -317,7 +199,7 @@ python models/MLP_model.py --feat_dir RF_feature --outdir MLP_cls_run \
     --task classification --threshold 10.0
 ```
 
-### 5.7 Optional: SMILES BERT baseline
+### Optional: SMILES BERT baseline
 
 `models/train_pl_bert.py` fine-tunes a HuggingFace sequence-classification
 model on reaction SMILES. It is argparse-driven; inspect the script for its
